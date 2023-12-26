@@ -5,15 +5,9 @@ import os
 import ast
 
 
-def get_number_spaces(line) -> int:
+def get_number_spaces(line: str) -> int:
     """Get the number of spaces at the beginning of line"""
-        
-    count = 0
-    for c in line:
-        if c != ' ':
-            break
-            count += 1
-    return count
+    return len(line) - len(line.lstrip())
 
 
 WARNINGS = {
