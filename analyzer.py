@@ -34,32 +34,16 @@ class StaticCodeAnalyzer:
         pass
     
     @staticmethod
-    def semicolon_error(line) -> bool:
+    def semicolon_error(line: str) -> bool:
         """Check if there is a semicolon(;) after statement"""
-
-        comment_matches = re.finditer(r"#.*", line, re.MULTILINE)  # extract comments form line
-        strings_matches = re.finditer(r"['\"](.*?)['\"]", line)  # extract strings from line
+        comment_matches = re.finditer(r"#.*|['\"](.*?)['\"]", line, re.MULTILINE)  # extract comments form line
         semicolon_matches = re.finditer(";", line)  # get all indexes of semicolons
-        matched_groups = []
+        matched_groups = [match.span() for match in comment_matches]
 
-        for match_comment in comment_matches:
-            matched_groups.append((match_comment.span()))
-
-        for match_string in strings_matches:
-            matched_groups.append(match_string.span())
-
+        # check if semicolon within comment or strings
         for match_semicolon in semicolon_matches:
-            
             start = match_semicolon.start()
-            found_match = False
-            
-            # check if semicolon within comment or strings
-            for start_pos, end_pos in matched_groups:
-                if start_pos <= start <= end_pos:
-                    found_match = True
-                    break
-                
-            if not found_match:
+            if not any(start_pos <= start <= end_pos for start_pos, end_pos in matched_groups):
                 return True
         return False
 
