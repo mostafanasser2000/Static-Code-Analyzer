@@ -47,13 +47,10 @@ class StaticCodeAnalyzer:
                 return True
         return False
 
-    
     @staticmethod
-    def long_line_error(line) -> bool:
-        """Chcek if the number of characters in line is more than 79"""
-        if len(line) > 79:
-            return True
-        return False
+    def long_line_error(line: str, max_length: int = 79) -> bool:
+        """Check if the number of characters in line is more than 79"""
+        return len(line) > max_length
     
     @staticmethod
     def indentation_error(current_line) -> bool:
