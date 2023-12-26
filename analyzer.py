@@ -34,7 +34,7 @@ function_name = ''
 class_name = ''
 
 
-class SataicCodeAnalayzer():
+class StaticCodeAnalyzer:
     
     def __init__(self) -> None:
         pass
