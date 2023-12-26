@@ -55,46 +55,26 @@ class StaticCodeAnalyzer:
     @staticmethod
     def indentation_error(current_line: str) -> bool:
         """Check whether an indentation of line is multiple of four or not"""
-        indent_of_current = get_number_spaces(current_line)        
-        return indent_of_current != 0 and indent_of_current % 4 != 0
+        indent_of_current = get_number_spaces(current_line)
+        return indent_of_current != 0 or indent_of_current % 4 != 0
 
     @staticmethod
-    def comment_error(line) -> bool:
+    def comment_error(line: str) -> bool:
         """Check if comment is preceded by two spaces or not"""
-
-        if line.find('#') != -1:
-            comment_index = line.index('#')
-            if comment_index >= 2 and line[comment_index - 2:comment_index] != '  ':
-                return True
-        return False
+        comment_index = line.index('#')
+        return comment_index != -1 and (comment_index < 2 or line[comment_index - 2:comment_index] != '  ')
     
     @staticmethod
-    def todo_error(line) -> bool:
+    def todo_error(line: str) -> bool:
         """Check if there is a todo within a comment or not"""
-
         line = line.lower()
-        comment_matches = re.finditer(r"#.*", line, re.MULTILINE)  # extract comments form line
-        todo_matches = re.finditer("todo", line)  # get all indexes of semicolons
-        matched_groups = []
+        comment_matches = re.finditer(r"#.*", line, re.MULTILINE)
+        comment_matched_groups = [match.span() for match in comment_matches]
 
-        for match_comment in comment_matches:
-            matched_groups.append((match_comment.span()))
-
-        if not matched_groups:
+        if not comment_matched_groups:
             return False
-        for match_todo in todo_matches:
-            start = match_todo.start()
-            found_match = False
-            
-            # check if semicolon within comment or strings
-            for start_pos, end_pos in matched_groups:
-                if start_pos <= start <= end_pos:
-                    found_match = True
-                    break
 
-            if found_match:
-                return True
-        return False
+        return any("todo" in line[start:end] for start, end in comment_matched_groups)
 
     @staticmethod
     def construct_error(line) -> bool:
