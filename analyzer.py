@@ -53,13 +53,10 @@ class StaticCodeAnalyzer:
         return len(line) > max_length
     
     @staticmethod
-    def indentation_error(current_line) -> bool:
+    def indentation_error(current_line: str) -> bool:
         """Check whether an indentation of line is multiple of four or not"""
-        
         indent_of_current = get_number_spaces(current_line)        
-        if indent_of_current == 0 or indent_of_current % 4 == 0:
-            return False
-        return True
+        return indent_of_current != 0 and indent_of_current % 4 != 0
 
     @staticmethod
     def comment_error(line) -> bool:
