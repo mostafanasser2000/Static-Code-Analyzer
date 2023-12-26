@@ -77,15 +77,10 @@ class StaticCodeAnalyzer:
         return any("todo" in line[start:end] for start, end in comment_matched_groups)
 
     @staticmethod
-    def construct_error(line) -> bool:
+    def constructor_error(line: str) -> bool:
         """Check if constructs like (def, class, etc.) flowed by only one space or not"""
-
-        template = re.compile(r"\s*\b(def|class)\b \w+")
-        # check if line contain function definition or class definition
-        if re.search(r"\bdef\b", line) or re.search(r"\bclass\b", line):
-            if template.match(line):
-                return False
-            return True
+        if re.search(r"\b(def|class)\b", line):
+            return not re.match(r"\s*\b(def|class)\b \w+", line)
         return False
 
     @staticmethod
