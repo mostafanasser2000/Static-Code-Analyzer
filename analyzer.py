@@ -3,12 +3,7 @@ import glob
 from sys import argv
 import os
 import ast
-
-
-def get_number_spaces(line: str) -> int:
-    """Get the number of spaces at the beginning of line"""
-    return len(line) - len(line.lstrip())
-
+from typing import List
 
 WARNINGS = {
     'S001': 'Too long',
@@ -17,25 +12,30 @@ WARNINGS = {
     'S004': 'At least two spaces required before inline comments',
     'S005': 'TODO found',
     'S006': 'More than two blank lines used before this line',
-    'S007': 'Too many spaces after',
+    'S007': 'Too many spaces after keyword',
     'S008': 'should use CamelCase',
     'S009': 'should use snake_case',
-    'S010': 'should be written in snake_case',
-    'S011': 'should be written in snake_case',
+    'S010': 'does not follow snake_case convention',
+    'S011': 'does not follow snake_case convention',
     'S012': 'The default argument value is mutable'
 }
 function_name = ''
 class_name = ''
 
 
+def get_number_spaces(line: str) -> int:
+    """Get the number of spaces at the beginning of line"""
+    return len(line) - len(line.lstrip())
+
+
 class StaticCodeAnalyzer:
-    
+
     def __init__(self) -> None:
         pass
-    
+
     @staticmethod
-    def semicolon_error(line: str) -> bool:
-        """Check if there is a semicolon(;) after statement"""
+    def semicolon_warning(line: str) -> bool:
+        """Check if there is a semicolon(;) after a statement"""
         comment_matches = re.finditer(r"#.*|['\"](.*?)['\"]", line, re.MULTILINE)  # extract comments form line
         semicolon_matches = re.finditer(";", line)  # get all indexes of semicolons
         matched_groups = [match.span() for match in comment_matches]
@@ -48,24 +48,24 @@ class StaticCodeAnalyzer:
         return False
 
     @staticmethod
-    def long_line_error(line: str, max_length: int = 79) -> bool:
+    def long_line_warning(line: str, max_length: int = 79) -> bool:
         """Check if the number of characters in line is more than 79"""
         return len(line) > max_length
-    
+
     @staticmethod
     def indentation_error(current_line: str) -> bool:
         """Check whether an indentation of line is multiple of four or not"""
         indent_of_current = get_number_spaces(current_line)
-        return indent_of_current != 0 or indent_of_current % 4 != 0
+        return indent_of_current != 0 and indent_of_current % 4 != 0
 
     @staticmethod
-    def comment_error(line: str) -> bool:
+    def comment_warning(line: str) -> bool:
         """Check if comment is preceded by two spaces or not"""
-        comment_index = line.index('#')
+        comment_index = line.find('#')
         return comment_index != -1 and (comment_index < 2 or line[comment_index - 2:comment_index] != '  ')
-    
+
     @staticmethod
-    def todo_error(line: str) -> bool:
+    def todo_warning(line: str) -> bool:
         """Check if there is a todo within a comment or not"""
         line = line.lower()
         comment_matches = re.finditer(r"#.*", line, re.MULTILINE)
@@ -77,175 +77,156 @@ class StaticCodeAnalyzer:
         return any("todo" in line[start:end] for start, end in comment_matched_groups)
 
     @staticmethod
-    def constructor_error(line: str) -> bool:
+    def constructor_warning(line: str) -> bool:
         """Check if constructs like (def, class, etc.) flowed by only one space or not"""
         if re.search(r"\b(def|class)\b", line):
             return not re.match(r"\s*\b(def|class)\b \w+", line)
         return False
 
     @staticmethod
-    def class_error(line) -> bool:
-        """Check if class name written in CamelCase or not"""
+    def class_naming_warning(line: str) -> bool:
+        """
+        Check if class name written in CamelCase or not
+        """
+        class_keyword = re.search(r"\bclass\b", line)
+        if class_keyword:
+            tokens: List[str] = re.findall(r"[A-Z-a-z0-9_]+\w*", line)
 
-        # Template to match class in Camel Case ^([A-Z][a-z0-9]+)+(\((([A-Z][a-z0-9]+)+(, )*)*\))?$
-        template = re.compile(r"([A-Z][a-z0-9]+)+")
-        if re.search(r"\bclass\b", line):
-            tokens = re.findall(r"[A-Z-a-z0-9_]+\w+", line)
-            
-            for i, token in enumerate(tokens):
-                if i == 0:  # catch case when token is class
-                    continue
-                if template.match(token) is None:
+            for i in range(1, len(tokens)):
+                if not (tokens[i].istitle() and tokens[i].isidentifier()):
                     global class_name
-                    class_name = token
+                    class_name = tokens[i]
                     return True
             return False
-        
-    @staticmethod
-    def function_error(line) -> bool:
-        """Check if function name written in snake_case or not"""
 
-        # ^[_a-z0-9]+\((([_a-z0-9]+(: \w+)?)(, )*){0,}\)$ for whole function definition
-        template = re.compile(r'^[_a-z0-9]+$')
-        if re.search(r"\bdef\b", line):
-            tokens = re.findall(r"[A-Z-a-z0-9_]+\w+", line)
-            
-            for i, token in enumerate(tokens):
-                if token == "def":  # catch case when token is class
-                    if i+1 < len(tokens) and template.match(tokens[i+1]) is None:
-                        global function_name
-                        function_name = token
-                        return True
-                    return False
+    @staticmethod
+    def function_naming_warning(line: str) -> bool:
+        """
+        Check if function name lower case or not
+        """
+        function_keyword = re.search(r"\bdef\b", line)
+        if function_keyword:
+            tokens: List[str] = re.findall(r"[A-Z-a-z0-9_]+\w*", line)
+            template = re.compile(r'^[_a-z0-9]+$')
+            if template.match(tokens[1]) is None:
+                global function_name
+                function_name = tokens[1]
+                return True
         return False
-    
+
     @staticmethod
     def get_construct_name(line):
         if re.search(r"\bdef\b\s+", line):
             return "def"
         return "class"
-    
+
     @staticmethod
     def extra_errors(file_path):
-        """python source file to be chacked using abstract syntax tree module (ast)"""
-        
-        extra = ""
-        f_name = open(file_path, 'r')
-        code = f_name.read()
-        f_name.close()
-        
+        """python source file to be checked using abstract syntax tree module (ast)"""
+        errors = []
+
+        with open(file_path, 'r') as f_name:
+            code = f_name.read()
+
         tree = ast.parse(code)
-        snake_case_regex = re.compile(r'^[_a-z0-9]+$')  # regular expression to test snake case
+        snake_case_regex = re.compile(r'^[_a-z0-9]+$')
 
-        argument_names = []  # hold the arguments nodes of AST
-        default_values = []  # hold the defaults nodes of AST
-        assignment_nodes = []  # hold Assign nodes of AST
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                argument_names.append(node.args.args)
-                default_values.append(node.args.defaults)
-                assignment_nodes.append(node.body)
+        argument_names = [node.args.args for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
+        default_values = [node.args.defaults for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
+        assignment_nodes = [node.body for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
 
         # check argument names
-        for args in argument_names:
-            for arg in args:
+        for args_list in argument_names:
+            for arg in args_list:
                 arg_name = arg.arg
                 line = arg.lineno
                 if snake_case_regex.match(arg_name) is None:
-                    extra += f"Line {line}: S010 Argument name '{arg_name}' {WARNINGS['S010']}\n"
-                    # print(f"{source}: Line {line}: S010 Argument name '{arg_name}' {WARNINGS['S010']}")
-        
-        # check default values expression
+                    errors.append(f"Line {line}: S010 Argument name '{arg_name}' {WARNINGS['S010']}")
+
         for node in default_values:
             for sub_node in node:
-                if isinstance(sub_node, ast.List) or isinstance(sub_node, ast.Set) or isinstance(sub_node, ast.Dict):
-                    extra += f"Line {sub_node.lineno}: S012 {WARNINGS['S012']}\n"
-                    # print(f"{source}: Line {sub_node.lineno}: S012 {WARNINGS['S012']}")
+                if isinstance(sub_node, (ast.List, ast.Set, ast.Dict)):
+                    errors.append(f"Line {sub_node.lineno}: S012 {WARNINGS['S012']}\n")
                     break
-                
+
         # check Assignment expression
         for node in assignment_nodes:
             for sub_node in node:
                 if isinstance(sub_node, ast.Assign):
-                    variable_name = sub_node.targets[0].id if isinstance(sub_node.targets[0], ast.Name) else sub_node.targets[0].attr
+                    variable_name = sub_node.targets[0].id if isinstance(sub_node.targets[0], ast.Name) else \
+                        sub_node.targets[0].attr
                     line = sub_node.lineno
                     if snake_case_regex.match(variable_name) is None:
-                        extra += f"Line {line}: S011  Variable '{variable_name}' {WARNINGS['S011']}"
-                        # print(f"{source}: Line {line}: S011  Variable '{variable_name}' {WARNINGS['S011']}")
-        return extra
+                        errors.append(f"Line {line}: S011  Variable '{variable_name}' {WARNINGS['S011']}")
+        return errors
 
     def check_file(self, file_path):
-        """Check file for some PEP8 errors"""
-        
-        final_result = ""
+        """Check the file for some PEP8 errors"""
+
         with open(file_path, 'r') as file:
             i = 1
-            previous_line = ''
             blank_lines = 0
-            result  = ""
-            
+            warnings = []
+
             for current_line in file:
-                curren_line_result = ""
                 current_line = current_line.rstrip()  # remove trailing spaces and \n
-                if self.long_line_error(current_line):
-                    curren_line_result += f'Line {i}: {WARNINGS["S001"]}\n'
+                if self.long_line_warning(current_line):
+                    warnings.append(f'Line {i}: {WARNINGS["S001"]}')
 
                 if self.indentation_error(current_line):
-                    curren_line_result += f'Line {i}: {WARNINGS["S002"]}\n'
+                    warnings.append(f'Line {i}: {WARNINGS["S002"]}')
 
-                if self.semicolon_error(current_line):
-                    curren_line_result += f'Line {i}: {WARNINGS["S003"]}\n'
+                if self.semicolon_warning(current_line):
+                    warnings.append(f'Line {i}: {WARNINGS["S003"]}')
 
-                if self.comment_error(current_line):
-                    curren_line_result += f'Line {i}: {WARNINGS["S004"]}\n'
+                if self.comment_warning(current_line):
+                    warnings.append(f'Line {i}: {WARNINGS["S004"]}')
 
-                if self.todo_error(current_line):
-                    curren_line_result += f'Line {i}: {WARNINGS["S005"]}\n'
+                if self.todo_warning(current_line):
+                    warnings.append(f'Line {i}: {WARNINGS["S005"]}')
 
-                if current_line:  # current line is not empty
+                if current_line:  # the current line is not empty
                     if blank_lines > 2:
-                        curren_line_result += f'Line {i}: {WARNINGS["S006"]}\n'
-                        
+                        warnings.append( f'Line {i}: {WARNINGS["S006"]}')
+
                     blank_lines = 0
-                if not current_line:  # if the current line is a blank
+                if not current_line:
                     blank_lines += 1
                     i += 1
                     continue
 
-                if self.construct_error(current_line):
-                    curren_line_result += f"Line {i}: {WARNINGS['S007']} {self.get_construct_name(current_line)}\n"
+                if self.constructor_warning(current_line):
+                    warnings.append(f"Line {i}: {WARNINGS['S007']} {self.get_construct_name(current_line)}")
 
-                if self.class_error(current_line):
-                    curren_line_result += f"Line {i}: Class name '{class_name}' {WARNINGS['S008']}\n"
+                if self.class_naming_warning(current_line):
+                    warnings.append(f"Line {i}: Class name '{class_name}' {WARNINGS['S008']}")
 
-                if self.function_error(current_line):
-                    curren_line_result += f"Line {i}: Function name '{function_name}' {WARNINGS['S009']}\n"
-                    
+                if self.function_naming_warning(current_line):
+                    warnings.append(f"Line {i}: Function name '{function_name}' {WARNINGS['S009']}")
+
                 i += 1
-                previous_line = current_line
-                if curren_line_result:
-                    result += curren_line_result + "\n"
-                
-             
-                    
-        result += self.extra_errors(file_path)
-        return result
+
+        extra_warnings = self.extra_errors(file_path)
+        warnings.extend(extra_warnings)
+        return warnings
 
 
 def main():
-    
     if len(argv) < 2:
         print("Usage: python file.py (file|directory)")
     path_name = argv[1]
-    
-    code_analyzer = SataicCodeAnalayzer()
-    
-    if os.path.isfile(path_name):  # if the input is a single python file
-        code_analyzer.check_file(path_name)
+
+    code_analyzer = StaticCodeAnalyzer()
+
+    if os.path.isfile(path_name):
+        result = code_analyzer.check_file(path_name)
+        print(*result, sep='\n')
     else:
         for f_name in sorted(glob.iglob(f"{path_name}//*.py", recursive=True)):
-            code_analyzer.check_file(f_name)
+            file_warnings = code_analyzer.check_file(f_name)
+            for warning in file_warnings:
+                print(f"{f_name}: {warning}")
+
 
 if __name__ == "__main__":
     main()
