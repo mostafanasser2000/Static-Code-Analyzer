@@ -4,10 +4,7 @@
 
 ## Preview
 
-https://github.com/mostafanasser2000/Static-Code-Analyzer/assets/67506662/3e09f8b3-fd4c-4b23-acaf-2fd7bca6dbea
-
-
-
+https://github.com/mostafanasser2000/Static-Code-Analyzer/assets/67506662/8367ce30-800a-4101-ad10-8bda7f4216ff
 
 ## Usage
 - check a single file
