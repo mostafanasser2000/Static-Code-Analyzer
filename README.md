@@ -1,12 +1,25 @@
-# Static-Code-Analyzer
-Python GUI program that checks against some PEP 8 – Style Guide for Python Code 
+# Static Code Analyzer
+
+[Static Code Analyzer](https://hyperskill.org/projects/112) simple static analyzer tool that finds common stylistic issues in Python code. This Project is from [Python Core](https://hyperskill.org/tracks/2/projects) Track from **JetBrains Academy**.
+
+## Preview
+
+https://github.com/mostafanasser2000/Static-Code-Analyzer/assets/67506662/3e09f8b3-fd4c-4b23-acaf-2fd7bca6dbea
 
 
 
-## How to run
 
-- to check only one file through GUI run `ui.py` file 
-- to check multiple python files in directory through command line run command
-``` python
-python3 analyzer.py <path to directory>
+## Usage
+- check a single file
+``` shell
+python3 analyzer.py <python-file>
 ```
+- check multiple files at once
+``` shell
+python3 analyzer.py <directory>
+```
+
+
+
+
+
